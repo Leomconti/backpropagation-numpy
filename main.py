@@ -98,16 +98,16 @@ def forward_propagate(network: Network, inputs: List[float]) -> List[float]:
     All of the outputs from one layer become inputs to the neurons on the next layer
     """
     for i, layer in enumerate(network.layers):
-        print(f"Passing layer {i}")
+        # print(f"Passing layer {i}")
         new_inputs = []
         for j, neuron in enumerate(layer.neurons):
-            print(f"Passing neuron {j}")
+            # print(f"Passing neuron {j}")
             activation = activate(neuron, inputs)
             neuron.output = transfer(activation)
             new_inputs.append(neuron.output)
         inputs = new_inputs  # Set new inputs to the outputs of the current layer
-        print("Inputs calculated... next layer")
-    print("Finished forward propagation")
+    #     print("Inputs calculated... next layer")
+    # print("Finished forward propagation")
     return inputs
 
 
@@ -133,14 +133,14 @@ def backpropagate_error(network: Network, expected: List[float]) -> Network:
 
     This gives the error signal (input) to propagate backwards through the layers.
     """
-    print("Starting backpropagation...")
+    # print("Starting backpropagation...")
     # For layer in the network, reverse order
     for i in reversed(range(len(network.layers))):
         layer = network.get_layer(i)
-        print(f"Processing layer {i}")
+        # print(f"Processing layer {i}")
         errors = []
         if i != len(network.layers) - 1:
-            print("Processing hidden layer")
+            # print("Processing hidden layer")
             # For neuron in the layer
             for j, neuron in enumerate(layer.neurons):
                 error = 0.0
@@ -148,20 +148,20 @@ def backpropagate_error(network: Network, expected: List[float]) -> Network:
                 for neuron in network.get_layer(i + 1).neurons:
                     error += neuron.weights[j] * neuron.delta
                 errors.append(error)
-                print(f"Hidden neuron {j} error: {error}")
+                # print(f"Hidden neuron {j} error: {error}")
         else:
-            print("Processing output layer")
+            # print("Processing output layer")
             for j, neuron in enumerate(layer.neurons):
                 error = neuron.output - expected[j]
                 errors.append(error)
-                print(f"Output neuron {j} error: {error}")
+                # print(f"Output neuron {j} error: {error}")
 
         # For neuron in the layer
         for j, neuron in enumerate(layer.neurons):
             neuron.delta = errors[j] * transfer_derivative(neuron.output)
-            print(f"Neuron {j} delta: {neuron.delta}")
+            # print(f"Neuron {j} delta: {neuron.delta}")
 
-    print("Backpropagation completed")
+    # print("Backpropagation completed")
     return network
 
 
@@ -171,19 +171,19 @@ def update_weights(network: Network, inputs: List[float], learning_rate: float) 
     """
     Update the weights and biases of the network based on the calculated deltas.
     """
-    print("Starting weight updates...")
+    # print("Starting weight updates...")
     for i, layer in enumerate(network.layers):
-        print(f"Updating weights for layer {i}")
+        # print(f"Updating weights for layer {i}")
         for n, neuron in enumerate(layer.neurons):
-            print(f"  Updating neuron {n}")
+            # print(f"  Updating neuron {n}")
             for j, _input in enumerate(inputs):
                 old_weight = neuron.weights[j]
                 neuron.weights[j] -= learning_rate * neuron.delta * _input
-                print(f"    Weight {j} updated: {old_weight:.4f} -> {neuron.weights[j]:.4f}")
+                # print(f"    Weight {j} updated: {old_weight:.4f} -> {neuron.weights[j]:.4f}")
             old_bias = neuron.bias
             neuron.bias -= learning_rate * neuron.delta
-            print(f"    Bias updated: {old_bias:.4f} -> {neuron.bias:.4f}")
-    print("Weight updates completed")
+            # print(f"    Bias updated: {old_bias:.4f} -> {neuron.bias:.4f}")
+    # print("Weight updates completed")
     return network
 
 
@@ -216,7 +216,6 @@ def train_network(network: Network, training_data: TrainingDataset, learning_rat
     Train the network on a list of input-output pairs. That will be given in the training data model.
     """
     for epoch in range(n_epochs):
-        print(f"Epoch {epoch}")
         total_error = 0.0
         for data in training_data.rows:
             # Check the error
@@ -226,6 +225,22 @@ def train_network(network: Network, training_data: TrainingDataset, learning_rat
             update_weights(network, data.inputs, learning_rate)
         print(f">epoch={epoch}, lrate={learning_rate:.3f}, error={total_error:.3f}")
     return network
+
+
+def predict(network: Network, inputs: List[float]) -> float:
+    """
+    Predict the output of the network for a given set of inputs.
+    """
+    outputs = forward_propagate(network, inputs)
+    return max(outputs)
+
+
+def predict_class(network: Network, inputs: List[float]) -> int:
+    """
+    Predict the class of the output of the network for a given set of inputs.
+    """
+    outputs = forward_propagate(network, inputs)
+    return outputs.index(max(outputs))
 
 
 if __name__ == "__main__":
@@ -240,5 +255,9 @@ if __name__ == "__main__":
         ]
     )
 
-    network = init_network(dataset.num_inputs, 2, dataset.num_outputs)
-    network = train_network(network, dataset, 0.5, 20)
+    network = init_network(dataset.num_inputs, 4, dataset.num_outputs)
+    network = train_network(network, dataset, 0.2, 200)
+
+    for data in dataset.rows:
+        prediction = predict_class(network, data.inputs)
+        print(f"Prediction: {prediction}, Expected: {data.expected}")

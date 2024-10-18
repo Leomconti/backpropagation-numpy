@@ -255,8 +255,10 @@ if __name__ == "__main__":
         ]
     )
 
-    network = init_network(dataset.num_inputs, 4, dataset.num_outputs)
-    network = train_network(network, dataset, 0.2, 200)
+    network = init_network(dataset.num_inputs, 2, dataset.num_outputs)
+    print(f"Network initialized: {network}")
+    network = train_network(network, dataset, 0.5, 20)
+    print(f"Network trained: {network}")
 
     for data in dataset.rows:
         prediction = predict_class(network, data.inputs)

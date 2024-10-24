@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from random import random, seed
+from random import seed
 from typing import List
 
 import numpy as np
@@ -63,8 +63,8 @@ def init_network(n_inputs: int, n_hidden: int, n_outputs: int) -> Network:
     hidden = Layer(
         neurons=[
             Neuron(
-                weights=[random() - 0.5 for _ in range(n_inputs)],
-                bias=random() - 0.5,
+                weights=np.random.uniform(-1.0, 1.0, n_inputs).tolist(),
+                bias=np.random.uniform(-1.0, 1.0),
             )
             for _ in range(n_hidden)
         ]
@@ -72,8 +72,8 @@ def init_network(n_inputs: int, n_hidden: int, n_outputs: int) -> Network:
     output = Layer(
         neurons=[
             Neuron(
-                weights=[random() - 0.5 for _ in range(n_hidden)],
-                bias=random() - 0.5,
+                weights=np.random.uniform(-1.0, 1.0, n_hidden).tolist(),
+                bias=np.random.uniform(-1.0, 1.0),
             )
             for _ in range(n_outputs)
         ]
@@ -99,9 +99,9 @@ def transfer(activation: float) -> float:
     Transfer functions are used to normalize the output of a neuron
     to a value between 0 and 1
     sigmoid is a common transfer function, also tanh, rectifier..
-    - output = 1 / (1 + e^(-activation))
+    - output = 1 / (1 + e^(-activation)) - numpy has it
     """
-    return 1.0 / (1.0 + np.exp(-activation))
+    return np.tanh(activation)
 
 
 def forward_propagate(network: Network, inputs: List[float]) -> List[float]:
@@ -121,9 +121,12 @@ def forward_propagate(network: Network, inputs: List[float]) -> List[float]:
 
 # 3. Backpropagation
 # 3.1 Calculate Derivative of Transfer Function
-# Derivative of sigmoid is output * (1 - output)
 def transfer_derivative(output: float) -> float:
-    return output * (1.0 - output)
+    """
+    Derivative of tanh function.
+    Since output = tanh(activation), derivative is 1 - output^2
+    """
+    return 1.0 - output**2
 
 
 # 3.2 Calculate Error Backpropagation
@@ -155,6 +158,7 @@ def backpropagate_error(network: Network, expected: List[float]):
                     error += neuron.weights[j] * neuron.delta
                 errors.append(error)
 
+        # For neuron in layer, calculate delta, based on error * derivative
         for j, neuron in enumerate(layer.neurons):
             neuron.delta = errors[j] * transfer_derivative(neuron.output)
 
@@ -188,9 +192,11 @@ def train_network(
             backpropagate_error(network, row.expected)
             update_weights(network, row.inputs, learning_rate)
 
-        if epoch % 100 == 0:
+        # Print every 1000 epochs
+        if epoch % 1000 == 0:
             print(f"Epoch={epoch}, Error={sum_error:.7f}")
 
+        # Stop at target 0.1 to not keep training if we reached what we wanted
         if sum_error < target_error:
             print(f"Early stopping at epoch {epoch}, Error={sum_error:.7f}")
             break
@@ -205,78 +211,98 @@ def predict(network: Network, inputs: List[float]) -> List[float]:
     return forward_propagate(network, inputs)
 
 
-# Test functions for different logical operations
 def test_network(network: Network, dataset: TrainingDataset, dataset_name: str):
     print(f"\nTesting {dataset_name} dataset:")
-    correct = 0
-    total = len(dataset.rows)
-
+    sum_error = 0
     for row in dataset.rows:
         outputs = predict(network, row.inputs)
-        prediction = 1 if outputs[0] >= 0.5 else 0
+        prediction = outputs[0]
         expected = row.expected[0]
-        print(f"Input: {row.inputs}, Expected: {expected}, Got: {prediction} (Raw: {outputs[0]:.4f})")
-        if prediction == expected:
-            correct += 1
+        error = (expected - prediction) ** 2
+        sum_error += error
+        print(f"Input: {row.inputs[0]:.4f}, Expected: {expected:.4f}, Got: {prediction:.4f}, Error: {error:.7f}")
 
-    accuracy = (correct / total) * 100
-    print(f"Accuracy: {accuracy}%")
+    # MAE
+    mean_error = sum_error / len(dataset.rows)
+    print(f"Mean Squared Error: {mean_error:.7f}")
 
 
 def main():
-    # XOR dataset
-    xor_dataset = TrainingDataset(
-        rows=[
-            TrainingDataRow(inputs=[0, 0], expected=[0]),
-            TrainingDataRow(inputs=[0, 1], expected=[1]),
-            TrainingDataRow(inputs=[1, 0], expected=[1]),
-            TrainingDataRow(inputs=[1, 1], expected=[0]),
-        ]
+    NUM_TRAINING_SAMPLES = 20
+    # Pick random sample of angles from 0 to 360
+    angles = np.arange(0, 361, 1)
+    selected_angles = np.random.choice(angles, size=NUM_TRAINING_SAMPLES, replace=False)
+    sine_dataset = TrainingDataset(
+        rows=[TrainingDataRow(inputs=[np.radians(x)], expected=[np.sin(np.radians(x))]) for x in selected_angles]
     )
 
-    # AND dataset
-    and_dataset = TrainingDataset(
-        rows=[
-            TrainingDataRow(inputs=[0, 0], expected=[0]),
-            TrainingDataRow(inputs=[0, 1], expected=[0]),
-            TrainingDataRow(inputs=[1, 0], expected=[0]),
-            TrainingDataRow(inputs=[1, 1], expected=[1]),
-        ]
-    )
-
-    # OR dataset
-    or_dataset = TrainingDataset(
-        rows=[
-            TrainingDataRow(inputs=[0, 0], expected=[0]),
-            TrainingDataRow(inputs=[0, 1], expected=[1]),
-            TrainingDataRow(inputs=[1, 0], expected=[1]),
-            TrainingDataRow(inputs=[1, 1], expected=[1]),
-        ]
+    # Test with all angles from 0 to 360
+    sine_test_dataset = TrainingDataset(
+        rows=[TrainingDataRow(inputs=[np.radians(x)], expected=[np.sin(np.radians(x))]) for x in range(361)]
     )
 
     # Training parameters
-    n_hidden = 4
-    learning_rate = 0.3
-    n_epochs = 5000
+    n_hidden = 10
+    learning_rate = 0.05
+    n_epochs = 10000
 
-    # Train and test XOR
-    print("\nTraining XOR network...")
-    xor_network = init_network(2, n_hidden, 1)
-    xor_network = train_network(xor_network, xor_dataset, learning_rate, n_epochs)
-    test_network(xor_network, xor_dataset, "XOR")
-
-    # Train and test AND
-    print("\nTraining AND network...")
-    and_network = init_network(2, n_hidden, 1)
-    and_network = train_network(and_network, and_dataset, learning_rate, n_epochs)
-    test_network(and_network, and_dataset, "AND")
-
-    # Train and test OR
-    print("\nTraining OR network...")
-    or_network = init_network(2, n_hidden, 1)
-    or_network = train_network(or_network, or_dataset, learning_rate, n_epochs)
-    test_network(or_network, or_dataset, "OR")
+    # Train and test sine dataset
+    print("\nTraining sine dataset...")
+    sine_network = init_network(1, n_hidden, 1)
+    sine_network = train_network(sine_network, sine_dataset, learning_rate, n_epochs)
+    test_network(sine_network, sine_test_dataset, "Sine")
 
 
 if __name__ == "__main__":
     main()
+
+
+
+# TTESTES COM XOR AND OR
+#   # XOR dataset
+#     xor_dataset = TrainingDataset(
+#         rows=[
+#             TrainingDataRow(inputs=[0, 0], expected=[0]),
+#             TrainingDataRow(inputs=[0, 1], expected=[1]),
+#             TrainingDataRow(inputs=[1, 0], expected=[1]),
+#             TrainingDataRow(inputs=[1, 1], expected=[0]),
+#         ]
+#     )
+
+#     # AND dataset
+#     and_dataset = TrainingDataset(
+#         rows=[
+#             TrainingDataRow(inputs=[0, 0], expected=[0]),
+#             TrainingDataRow(inputs=[0, 1], expected=[0]),
+#             TrainingDataRow(inputs=[1, 0], expected=[0]),
+#             TrainingDataRow(inputs=[1, 1], expected=[1]),
+#         ]
+#     )
+
+#     # OR dataset
+#     or_dataset = TrainingDataset(
+#         rows=[
+#             TrainingDataRow(inputs=[0, 0], expected=[0]),
+#             TrainingDataRow(inputs=[0, 1], expected=[1]),
+#             TrainingDataRow(inputs=[1, 0], expected=[1]),
+#             TrainingDataRow(inputs=[1, 1], expected=[1]),
+#         ]
+#     )
+
+# # Train and test XOR
+# print("\nTraining XOR network...")
+# xor_network = init_network(2, n_hidden, 1)
+# xor_network = train_network(xor_network, xor_dataset, learning_rate, n_epochs)
+# test_network(xor_network, xor_dataset, "XOR")
+
+# # Train and test AND
+# print("\nTraining AND network...")
+# and_network = init_network(2, n_hidden, 1)
+# and_network = train_network(and_network, and_dataset, learning_rate, n_epochs)
+# test_network(and_network, and_dataset, "AND")
+
+# # Train and test OR
+# print("\nTraining OR network...")
+# or_network = init_network(2, n_hidden, 1)
+# or_network = train_network(or_network, or_dataset, learning_rate, n_epochs)
+# test_network(or_network, or_dataset, "OR")

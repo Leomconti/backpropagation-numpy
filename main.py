@@ -206,8 +206,8 @@ def predict(network: Network, inputs: List[float]) -> List[float]:
 
 
 # Test functions for different logical operations
-def test_network(network: Network, dataset: TrainingDataset, operation: str):
-    print(f"\nTesting {operation} operation:")
+def test_network(network: Network, dataset: TrainingDataset, dataset_name: str):
+    print(f"\nTesting {dataset_name} dataset:")
     correct = 0
     total = len(dataset.rows)
 
@@ -255,7 +255,7 @@ def main():
     )
 
     # Training parameters
-    n_hidden = 4  # Increased number of hidden neurons
+    n_hidden = 4
     learning_rate = 0.3
     n_epochs = 5000
 

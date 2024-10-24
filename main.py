@@ -193,7 +193,7 @@ def train_network(
             update_weights(network, row.inputs, learning_rate)
 
         # Print every 1000 epochs
-        if epoch % 1000 == 0:
+        if epoch % 100 == 0:
             print(f"Epoch={epoch}, Error={sum_error:.7f}")
 
         # Stop at target 0.1 to not keep training if we reached what we wanted
@@ -220,15 +220,16 @@ def test_network(network: Network, dataset: TrainingDataset, dataset_name: str):
         expected = row.expected[0]
         error = (expected - prediction) ** 2
         sum_error += error
-        print(f"Input: {row.inputs[0]:.4f}, Expected: {expected:.4f}, Got: {prediction:.4f}, Error: {error:.7f}")
+        print(f"Input: {row.inputs[0]:.4f} | Expected: {expected:.4f} | Got: {prediction:.4f} ( Error: {error:.5f} )")
 
     # MAE
     mean_error = sum_error / len(dataset.rows)
-    print(f"Mean Squared Error: {mean_error:.7f}")
+    print(f"MAE: {mean_error:.5f}")
 
 
 def main():
     NUM_TRAINING_SAMPLES = 20
+
     # Pick random sample of angles from 0 to 360
     angles = np.arange(0, 361, 1)
     selected_angles = np.random.choice(angles, size=NUM_TRAINING_SAMPLES, replace=False)
@@ -241,12 +242,11 @@ def main():
         rows=[TrainingDataRow(inputs=[np.radians(x)], expected=[np.sin(np.radians(x))]) for x in range(361)]
     )
 
-    # Training parameters
+    ### TRAINING ###
     n_hidden = 10
     learning_rate = 0.05
     n_epochs = 10000
 
-    # Train and test sine dataset
     print("\nTraining sine dataset...")
     sine_network = init_network(1, n_hidden, 1)
     sine_network = train_network(sine_network, sine_dataset, learning_rate, n_epochs)
@@ -255,7 +255,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 # TTESTES COM XOR AND OR
